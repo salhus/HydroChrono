@@ -1,13 +1,14 @@
-#include <hydroc/gui/guihelper.h>
-#include <hydroc/helper.h>
-#include <hydroc/hydro_forces.h>
+#include <chrono>
+#include <filesystem>
+#include <iomanip>
+#include <vector>
 
 #include <chrono/assets/ChColor.h>
 #include <chrono/core/ChRealtimeStep.h>
-#include <chrono>  // std::chrono::high_resolution_clock::now
-#include <filesystem>
-#include <iomanip>  // std::setprecision
-#include <vector>   // std::vector<double>
+
+#include <hydroc/gui/guihelper.h>
+#include <hydroc/helper.h>
+#include <hydroc/hydro_forces.h>
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -21,7 +22,7 @@ using namespace chrono::geometry;
 int main(int argc, char* argv[]) {
     GetLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
 
-    if (hydroc::setInitialEnvironment(argc, argv) != 0) {
+    if (hydroc::SetInitialEnvironment(argc, argv) != 0) {
         return 1;
     }
 
@@ -37,12 +38,12 @@ int main(int argc, char* argv[]) {
         (DATADIR / "sphere" / "geometry" / "oes_task10_sphere.obj").lexically_normal().generic_string();
     auto h5fname = (DATADIR / "sphere" / "hydroData" / "sphere.h5").lexically_normal().generic_string();
 
-    // system/solver settings
+//    // system/solver settings
     ChSystemNSC system;
     system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
     double timestep = 0.015;
     system.SetSolverType(ChSolver::Type::GMRES);
-    system.SetSolverMaxIterations(300);  // the higher, the easier to keep the constraints satisfied.
+    system.SetSolverMaxIterations(300);
     system.SetStep(timestep);
     ChRealtimeStepTimer realtime_timer;
     double simulationDuration = 600.0;
@@ -65,7 +66,7 @@ int main(int argc, char* argv[]) {
     bool saveDataOn      = true;
     std::vector<double> time_vector;
     std::vector<double> heave_position;
-
+//
     // set up body from a mesh
     std::cout << "Attempting to open mesh file: " << body1_meshfame << std::endl;
     std::shared_ptr<ChBody> sphereBody = chrono_types::make_shared<ChBodyEasyMesh>(  //
@@ -75,17 +76,19 @@ int main(int argc, char* argv[]) {
         true,   // create visualization asset
         false   // do not collide
     );
-
+//
     // define the body's initial conditions
     system.Add(sphereBody);
     sphereBody->SetNameString("body1");  // must set body name correctly! (must match .h5 file)
     sphereBody->SetPos(ChVector<>(0, 0, -2));
     sphereBody->SetMass(261.8e3);
 
-    // Create a visualization material
+    // create a visualization material
     auto yellow = chrono_types::make_shared<ChVisualMaterial>();
     yellow->SetDiffuseColor(ChColor(0.244f, 0.225f, 0.072f));
     sphereBody->GetVisualShape(0)->SetMaterial(0, yellow);
+
+    std::cout << "Body created from the mesh file: " << body1_meshfame << std::endl;
 
     // add prismatic joint between sphere and ground (limit to heave motion only)
     auto prismatic = chrono_types::make_shared<ChLinkLockPrismatic>();
@@ -93,7 +96,7 @@ int main(int argc, char* argv[]) {
                           ChCoordsys<>(ChVector<>(0, 0, -5)));
     system.AddLink(prismatic);
 
-    // Create the spring between body_1 and ground. The spring end points are
+    // create the spring between body_1 and ground. The spring end points are
     // specified in the body relative frames.
     double rest_length  = 3.0;
     double spring_coef  = 0.0;
@@ -101,24 +104,34 @@ int main(int argc, char* argv[]) {
     auto spring_1       = chrono_types::make_shared<ChLinkTSDA>();
     spring_1->Initialize(sphereBody, ground, false, ChVector<>(0, 0, -2),
                          ChVector<>(0, 0, -5));  // false means positions are in global frame
-    // spring_1->SetRestLength(rest_length); // if not set, the rest length is calculated from initial position
     spring_1->SetSpringCoefficient(spring_coef);
     spring_1->SetDampingCoefficient(damping_coef);
     system.AddLink(spring_1);
 
-    auto my_hydro_inputs = std::make_shared<IrregularWave>();
-    my_hydro_inputs->wave_height         = 2.0;
-    my_hydro_inputs->wave_period         = 12.0;
-    my_hydro_inputs->simulation_duration = simulationDuration;
-    my_hydro_inputs->simulation_dt       = timestep;
-    my_hydro_inputs->ramp_duration       = 60.0;
-    // my_hydro_inputs->ramp_duration = 0.0;
-    // my_hydro_inputs->SetSpectrumFrequencies(0.001, 1.0, 1000);
-    // TODO add option for PiersonMoskowitzSpectrumHz or other spectrum, have a default, do PM for now
-
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(sphereBody);
-    // TestHydro hydro_forces(bodies, h5fname, my_hydro_inputs);
+
+    IrregularWaveParams wave_inputs;
+    wave_inputs.num_bodies_          = bodies.size();
+    wave_inputs.simulation_dt_       = timestep;
+    wave_inputs.simulation_duration_ = simulationDuration;
+    wave_inputs.ramp_duration_       = 60.0;
+    wave_inputs.wave_height_         = 2.0;
+    wave_inputs.wave_period_         = 12.0;
+    wave_inputs.frequency_min_       = 0.001;
+    wave_inputs.frequency_max_       = 1.0;
+    wave_inputs.nfrequencies_        = 1000;
+
+    std::shared_ptr<IrregularWaves> my_hydro_inputs;  // declare outside the try-catch block
+
+    try {
+        my_hydro_inputs = std::make_shared<IrregularWaves>(wave_inputs);
+    } catch (const std::exception& e) {
+        std::cerr << "Caught exception: " << e.what() << '\n';
+    } catch (...) {
+        std::cerr << "Caught unknown exception.\n";
+    }
+
     TestHydro hydro_forces(bodies, h5fname);
     hydro_forces.AddWaves(my_hydro_inputs);
 
@@ -167,7 +180,6 @@ int main(int argc, char* argv[]) {
             heave_position.push_back(sphereBody->GetPos().z());
         }
     }
-
 
     // for profiling
     auto end          = std::chrono::high_resolution_clock::now();

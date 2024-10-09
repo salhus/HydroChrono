@@ -1,4 +1,4 @@
-find_package(Python COMPONENTS Interpreter REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 add_executable(h5fileinfo_t01 h5fileinfo_t01.cpp)
 target_link_libraries(h5fileinfo_t01 HydroChrono)
@@ -75,7 +75,7 @@ if(TARGET demo_sphere_decay)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/sphere_decay_comparison.txt)
 
         add_test(NAME demo_sphere_decay_ref
-                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare.py ${FILE_REF} ${FILE_RST}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare.py ${FILE_REF} ${FILE_RST}
         )
 
         set_tests_properties(
@@ -87,6 +87,38 @@ if(TARGET demo_sphere_decay)
                 FIXTURES_REQUIRED demo_sphere_decay_01_file
         )
 
+endif()
+
+
+# DEMO Sphere irregular waves
+if(TARGET demo_sphere_irreg_waves)
+        add_test (
+                NAME demo_sphere_irreg_waves_01
+                COMMAND $<TARGET_FILE:demo_sphere_irreg_waves> ${HYDROCHRONO_DATA_DIR} --nogui
+        )
+        set_tests_properties(
+                demo_sphere_irreg_waves_01
+                PROPERTIES LABELS "medium;core"
+        )
+        # Define the range of file numbers we want to iterate over
+        set(FILE_RANGE_START 1)
+        set(FILE_RANGE_END 10)
+
+        # Loop over the file numbers and create tests
+        set(FILE_RST ${CMAKE_CURRENT_BINARY_DIR}/results/sphere_irreg_waves.txt)
+        set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/ref_sphere_irreg_waves.txt)
+
+        add_test(NAME demo_sphere_irreg_waves_ref_${FILE_NUMBER}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare_irreg_waves.py ${FILE_REF} ${FILE_RST}
+        )
+        set_tests_properties(
+                demo_sphere_irreg_waves_ref_${FILE_NUMBER}
+                PROPERTIES
+                LABELS "demos;ref"
+                DEPENDS demo_irreg_waves_01
+                REQUIRED_FILES ${FILE_RST}
+                FIXTURES_REQUIRED demo_sphere_irreg_waves_01_file
+        )
 endif()
 
 # Compares to the HydroChrono simulation itself
@@ -112,7 +144,7 @@ if(TARGET demo_sphere_reg_waves)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/sphere/postprocessing/ref_sphere_reg_waves_${FILE_NUMBER}.txt)
 
         add_test(NAME demo_sphere_reg_waves_ref_${FILE_NUMBER}
-                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare_reg_waves.py ${FILE_REF} ${FILE_RST}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/sphere/compare_reg_waves.py ${FILE_REF} ${FILE_RST}
         )
         set_tests_properties(
                 demo_sphere_reg_waves_ref_${FILE_NUMBER}
@@ -125,18 +157,6 @@ if(TARGET demo_sphere_reg_waves)
         endforeach()
 
 
-endif()
-
-# Not touched for now
-if(TARGET demo_sphere_irreg_waves)
-        add_test (
-                NAME demo_sphere_irreg_waves_01
-                COMMAND $<TARGET_FILE:demo_sphere_irreg_waves> ${HYDROCHRONO_DATA_DIR} --nogui
-        )
-        set_tests_properties(
-                demo_sphere_irreg_waves_01
-                PROPERTIES LABELS "medium;core"
-        )
 endif()
 
 
@@ -157,7 +177,7 @@ if(TARGET demo_rm3_decay)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/rm3/postprocessing/rm3_WECSim_decay.txt)
 
         add_test(NAME demo_rm3_decay_ref
-                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/rm3/compare.py ${FILE_REF} ${FILE_RST}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/rm3/compare.py ${FILE_REF} ${FILE_RST}
         )
 
         set_tests_properties(
@@ -199,7 +219,7 @@ if(TARGET demo_oswec_decay)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/oswec/postprocessing/wecsim_oswec_decay.txt)
 
         add_test(NAME demo_oswec_decay_ref
-                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/oswec/compare.py ${FILE_REF} ${FILE_RST}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/oswec/compare.py ${FILE_REF} ${FILE_RST}
         )
 
         set_tests_properties(
@@ -280,7 +300,7 @@ if(TARGET demo_f3of_DT3)
         set(FILE_REF ${HYDROCHRONO_DATA_DIR}/f3of/postprocessing/ref_CHRONO_F3OF_DT3_PITCH.txt )
 
         add_test(NAME demo_F3OF_DT3_ref
-                COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/../demos/f3of/compare_DT3.py ${FILE_REF} ${FILE_RST}
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../demos/f3of/compare_DT3.py ${FILE_REF} ${FILE_RST}
         )
 
         set_tests_properties(

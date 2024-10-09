@@ -33,8 +33,8 @@ endif()
 #--------------------------------------------------------------
 
 project(HydroChrono 
-	VERSION 0.0.1
-	DESCRIPTION "Hydro dynamic library based on chrono engine"
+	VERSION 0.1
+	DESCRIPTION "A hydrodynamic library for use with Project Chrono."
 	LANGUAGES CXX
 )
 
@@ -50,6 +50,7 @@ option (HYDROCHRONO_ENABLE_DEMOS "Enable demo executables" ON)
 option (HYDROCHRONO_ENABLE_USER_DOC "User's documentation" OFF)
 option (HYDROCHRONO_ENABLE_PROG_DOC "Programmer's documentation" OFF)
 
+
 # find required packages and libraries to make HydroChrono library
 set (LIB_TYPE STATIC) # or SHARED
 string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
@@ -57,6 +58,7 @@ string(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 if(HYDROCHRONO_ENABLE_IRRLICHT)
 	# If irrlicht is required chrono library must be compiled with irrlicht
 	find_package(Chrono COMPONENTS Irrlicht CONFIG REQUIRED)
+	add_compile_definitions(HYDROCHRONO_HAVE_IRRLICHT=1)
 else(HYDROCHRONO_ENABLE_IRRLICHT)
 	find_package(Chrono CONFIG REQUIRED)
 endif(HYDROCHRONO_ENABLE_IRRLICHT)
@@ -89,7 +91,7 @@ if(MSVC)
 endif()
 
 # =======================
-# Hydro Chrono Library
+# HydroChrono Library
 # =======================
 set(HYDROCHRONO_SOURCES
   
@@ -136,6 +138,11 @@ target_link_options(HydroChrono BEFORE
 		${CHRONO_LINKER_FLAGS}
 )
 
+set_target_properties(HydroChrono
+	PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+)
+
 # temporary hack
 # seems there is no namespace target hdf5:: on linux
 # for HDF5 version 1.10 to 1.14 ?
@@ -154,54 +161,47 @@ target_link_libraries(HydroChrono
 # ====================
 # Irrlicht GUI helper
 # ====================
-if(HYDROCHRONO_ENABLE_IRRLICHT)
 
-	add_library(HydroChronoGUI)
+add_library(HydroChronoGUI)
 
-	target_sources(
-		HydroChronoGUI
+target_sources(
+	HydroChronoGUI
 
-		PUBLIC
-		src/gui/guihelper.cpp
-	)
+	PUBLIC
+	src/gui/guihelper.cpp
+)
 
-	target_compile_features(HydroChronoGUI PUBLIC cxx_std_17)
+target_compile_features(HydroChronoGUI PUBLIC cxx_std_17)
 
 
-	target_include_directories(
-		HydroChronoGUI
+target_include_directories(
+	HydroChronoGUI
 
-		PUBLIC
-		
+	PUBLIC
 		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
-		${CHRONO_INCLUDE_DIRS} 		
-	)
+		${CHRONO_INCLUDE_DIRS}
+)
 
-	target_compile_definitions(HydroChronoGUI
-		PUBLIC
-			CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"
-		PRIVATE
-			HYDROCHRONO_HAVE_IRRLICHT=1			
-	)
-
-	target_compile_options(HydroChronoGUI BEFORE 
-		PUBLIC
-			${CHRONO_CXX_FLAGS}
-	)
-
-	target_link_options(HydroChronoGUI BEFORE 
-		PUBLIC
-			${CHRONO_LINKER_FLAGS}
-	)
-
-	target_link_libraries(HydroChronoGUI 
-		PRIVATE
-			${CHRONO_LIBRARIES}
-	)
-
-
+if(HYDROCHRONO_ENABLE_IRRLICHT)
 endif(HYDROCHRONO_ENABLE_IRRLICHT)
+
+target_compile_options(HydroChronoGUI BEFORE
+	PUBLIC
+		${CHRONO_CXX_FLAGS}
+)
+
+target_link_options(HydroChronoGUI BEFORE
+	PUBLIC
+		${CHRONO_LINKER_FLAGS}
+)
+
+target_link_libraries(HydroChronoGUI
+	PRIVATE
+		${CHRONO_LIBRARIES}
+)
+
+
 
 # ====================
 # DEMOS
@@ -278,8 +278,3 @@ export(
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/HydroChronoTargets.cmake"
     NAMESPACE HydroChrono::
 )
-
-# ================
-# Documentation
-# ================
-add_subdirectory(doc)
