@@ -40,7 +40,7 @@ double GetEtaIrregular(const Eigen::Vector3d& position,
 }
 
 std::vector<double> GetEtaIrregularTimeSeries(const Eigen::Vector3d& position,
-                                              const Eigen::VectorXd& time_index,
+                                              const std::vector<double> time_index,
                                               const Eigen::VectorXd& freqs_hz,
                                               const Eigen::VectorXd& spectral_densities,
                                               const Eigen::VectorXd& spectral_widths,
@@ -82,6 +82,7 @@ Eigen::Vector3d GetWaterVelocity(const Eigen::Vector3d& position,
         water_velocity[2] = omega * amplitude * std::sinh(wavenumber * (z_pos + water_depth)) /
                             std::sinh(wavenumber * water_depth) * sin(wavenumber * x_pos - omega * time + phase);
     }
+
     return water_velocity;
 }
 
@@ -200,6 +201,15 @@ RegularWave::RegularWave(unsigned int num_b) {
 }
 
 void RegularWave::Initialize() {
+    wavenumber_ = ComputeWaveNumber(regular_wave_omega_, water_depth_, g_);
+}
+
+void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data,
+                            HydroData::SimulationParameters& sim_data) {
+    wave_info_   = reg_h5_data;
+    water_depth_ = sim_data.water_depth;
+    g_           = sim_data.g;
+
     // set up regular waves here, call other helper functions as necessary
     int total_dofs = 6 * num_bodies_;
     excitation_force_mag_.resize(total_dofs);
@@ -216,15 +226,6 @@ void RegularWave::Initialize() {
             excitation_force_phase_[body_offset + rowEx] = GetExcitationPhaseInterp(b, rowEx, 0, freq_index_des);
         }
     }
-
-    wavenumber_ = ComputeWaveNumber(regular_wave_omega_, water_depth_, g_);
-}
-
-void RegularWave::AddH5Data(std::vector<HydroData::RegularWaveInfo>& reg_h5_data,
-                            HydroData::SimulationParameters& sim_data) {
-    wave_info_   = reg_h5_data;
-    water_depth_ = sim_data.water_depth;
-    g_           = sim_data.g;
 }
 
 Eigen::Vector3d RegularWave::GetVelocity(const Eigen::Vector3d& position, double time) {
@@ -696,7 +697,7 @@ void IrregularWaves::CreateFreeSurfaceElevation() {
     auto position = Eigen::Vector3d(0.0, 0.0, 0.0);
     // get timeseries
     free_surface_elevation_sampled_ = GetEtaIrregularTimeSeries(
-        position, time_array, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
+        position, free_surface_time_sampled_, spectrum_frequencies_, spectral_densities_, spectral_widths_, wave_phases_, wavenumbers_);
 
     // Apply ramp if ramp_duration is greater than 0
     if (params_.ramp_duration_ > 0.0) {
